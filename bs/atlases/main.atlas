@@ -1,0 +1,7 @@
+images {
+  image: "/bs/assets/images/background.png"
+}
+images {
+  image: "/bs/assets/images/emoji.png"
+}
+extrude_borders: 2

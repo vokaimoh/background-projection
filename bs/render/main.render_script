@@ -1,0 +1,81 @@
+local m_main = require "bs.lua.main"
+local msg_window_resized = hash("window_resized")
+--
+-- projection that centers and fits content with maintained aspect ratio
+--
+local function fixed_fit_projection(width, height, reverse)
+	local window_width = render.get_window_width()
+	local window_height = render.get_window_height()
+	local zoom
+	if reverse then
+		zoom = math.max(window_width / width, window_height / height)
+	else
+		zoom = math.min(window_width / width, window_height / height)
+	end
+	local projected_width = window_width / zoom
+	local projected_height = window_height / zoom
+	local offset_x = -(projected_width - width) / 2
+	local offset_y = -(projected_height - height) / 2
+	return vmath.matrix4_orthographic(offset_x, offset_x + projected_width, offset_y, offset_y + projected_height, -1, 1)
+end
+
+function init(self)
+	self.pred_tile = render.predicate({"tile"})
+	self.pred_gui = render.predicate({"gui"})
+	self.pred_particle = render.predicate({"particle"})
+	self.pred_background = render.predicate({"background"})
+	self.color_clear = vmath.vector4()
+	self.view = vmath.matrix4()
+
+	m_main.proj = fixed_fit_projection(render.get_width(), render.get_height(), false)
+end
+
+function update(self)
+	local window_width = render.get_window_width()
+	local window_height = render.get_window_height()
+	if window_width == 0 or window_height == 0 then
+		return
+	end
+	-- clear screen buffers
+	--
+	render.set_depth_mask(true)
+	render.set_stencil_mask(0xff)
+	render.clear({[render.BUFFER_COLOR_BIT] = self.color_clear, [render.BUFFER_DEPTH_BIT] = 1, [render.BUFFER_STENCIL_BIT] = 0})
+	-- render world (sprites, tilemaps, particles etc)
+	--
+	local proj = fixed_fit_projection(render.get_width(), render.get_height(), false)
+	local frustum = proj * self.view
+	
+	render.set_viewport(0, 0, window_width, window_height)
+	render.set_view(self.view)
+
+	render.set_projection(fixed_fit_projection(960, 960, true))
+	render.draw(self.pred_background)
+
+	render.set_projection(proj)
+
+	render.set_depth_mask(false)
+	render.disable_state(render.STATE_DEPTH_TEST)
+	render.enable_state(render.STATE_BLEND)
+	render.set_blend_func(render.BLEND_SRC_ALPHA, render.BLEND_ONE_MINUS_SRC_ALPHA)
+	render.disable_state(render.STATE_CULL_FACE)
+
+	render.draw(self.pred_particle, {frustum = frustum})
+	render.draw(self.pred_tile, {frustum = frustum})
+	-- render GUI
+	--
+	local proj_gui = vmath.matrix4_orthographic(0, window_width, 0, window_height, -1, 1)
+
+	render.set_projection(proj_gui)
+
+	render.enable_state(render.STATE_STENCIL_TEST)
+	render.draw(self.pred_gui, {frustum = proj_gui * self.view})
+	render.disable_state(render.STATE_STENCIL_TEST)
+	render.disable_state(render.STATE_BLEND)
+end
+
+function on_message(self, message_id, message)
+	if message_id == msg_window_resized then
+		m_main.proj = fixed_fit_projection(render.get_width(), render.get_height(), false)
+	end
+end
