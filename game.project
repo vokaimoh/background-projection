@@ -25,3 +25,6 @@ scale_mode = stretch
 retry_count = 1200
 retry_time = 0.1
 
+[native_extension]
+app_manifest = /bs/main.appmanifest
+

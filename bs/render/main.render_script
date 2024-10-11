@@ -1,5 +1,3 @@
-local m_main = require "bs.lua.main"
-local msg_window_resized = hash("window_resized")
 --
 -- projection that centers and fits content with maintained aspect ratio
 --
@@ -26,8 +24,6 @@ function init(self)
 	self.pred_background = render.predicate({"background"})
 	self.color_clear = vmath.vector4()
 	self.view = vmath.matrix4()
-
-	m_main.proj = fixed_fit_projection(render.get_width(), render.get_height(), false)
 end
 
 function update(self)
@@ -72,10 +68,4 @@ function update(self)
 	render.draw(self.pred_gui, {frustum = proj_gui * self.view})
 	render.disable_state(render.STATE_STENCIL_TEST)
 	render.disable_state(render.STATE_BLEND)
-end
-
-function on_message(self, message_id, message)
-	if message_id == msg_window_resized then
-		m_main.proj = fixed_fit_projection(render.get_width(), render.get_height(), false)
-	end
 end
